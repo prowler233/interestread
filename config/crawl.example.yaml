@@ -1,0 +1,230 @@
+# 复制为 crawl.yaml 后按需调整；本地配置不纳入 Git。
+# 公共采集设置
+# 总开关、分组开关和来源开关全部开启时，才会采集该来源。
+enabled: true                 # 采集总开关，false 时所有来源均跳过。
+concurrency: 4                # NewsNow 和 OpenCLI 共用的并发上限。
+interval: 1                   # 有来源排队时，同一采集协程切换来源前的等待时间（秒）。
+timeout: 20                   # 单次 HTTP 请求超时（秒）。
+retries: 2                    # HTTP 可重试错误的额外重试次数，0 表示只请求一次。
+max_response_bytes: 5000000   # 单次响应体大小上限（字节）。
+user_agent: InteretRead/0.1    # 公共请求标识，可被来源专属请求头覆盖。
+
+# 预留给后续来源检测流程。
+checks:
+  # baseline_dir 默认是项目目录下的 .state/source_checks，可设置为持久化挂载目录。
+  field_drop: 0.5
+  count_ratio: 0.2
+  min_baseline_rows: 10
+
+# NewsNow 热榜来源，统一接口按 id 分别请求，每次返回一个来源的热榜。
+newsnow:
+  enabled: true
+  api_url: https://newsnow.busiyi.world/api/s
+  headers:
+    User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+      like Gecko) Chrome/91.0.4472.124 Safari/537.36
+    Accept: application/json, text/plain, */*
+    Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+    Connection: keep-alive
+    Cache-Control: no-cache
+  sources:
+  - id: zhihu
+    name: 知乎热榜
+    enabled: true
+    limit: 30
+  - id: weibo
+    name: 微博热搜
+    enabled: false
+    limit: 30
+  - id: baidu
+    name: 百度热搜
+    enabled: false
+    limit: 30
+  - id: toutiao
+    name: 今日头条
+    enabled: false
+    limit: 30
+  - id: douyin
+    name: 抖音热榜
+    enabled: false
+    limit: 30
+  - id: bilibili-hot-search
+    name: 哔哩哔哩热搜
+    enabled: false
+    limit: 30
+  - id: thepaper
+    name: 澎湃新闻
+    enabled: false
+    limit: 30
+  - id: ifeng
+    name: 凤凰网
+    enabled: false
+    limit: 30
+  - id: tieba
+    name: 百度贴吧
+    enabled: false
+    limit: 30
+  - id: ithome
+    name: IT之家
+    enabled: false
+    limit: 30
+  - id: v2ex-share
+    name: V2EX 最新分享
+    enabled: false
+    limit: 30
+  - id: solidot
+    name: Solidot
+    enabled: false
+    limit: 30
+  - id: sspai
+    name: 少数派
+    enabled: false
+    limit: 30
+  - id: juejin
+    name: 稀土掘金
+    enabled: false
+    limit: 30
+  - id: coolapk
+    name: 酷安
+    enabled: false
+    limit: 30
+  - id: nowcoder
+    name: 牛客
+    enabled: false
+    limit: 30
+  - id: wallstreetcn-hot
+    name: 华尔街见闻最热
+    enabled: false
+    limit: 30
+  - id: wallstreetcn-quick
+    name: 华尔街见闻快讯
+    enabled: false
+    limit: 30
+  - id: cls-hot
+    name: 财联社热门
+    enabled: false
+    limit: 30
+  - id: cls-telegraph
+    name: 财联社电报
+    enabled: false
+    limit: 30
+  - id: xueqiu-hotstock
+    name: 雪球热门股票
+    enabled: false
+    limit: 30
+  - id: gelonghui
+    name: 格隆汇
+    enabled: false
+    limit: 30
+  - id: hupu
+    name: 虎扑
+    enabled: false
+    limit: 30
+  - id: dongqiudi
+    name: 懂球帝
+    enabled: false
+    limit: 30
+# OpenCLI 自选平台来源
+# 在 Python 所在系统环境安装 OpenCLI，并确保能执行 opencli 命令。
+# site / command 填 OpenCLI 的站点和只读命令。args 填参数，fields 填“项目字段: 返回字段”。
+# args 中独立的 '{query}' 从该来源的 query 设置读取。其他参数直接写在 args。
+# 以下示例默认关闭，安装后按需开启；浏览器来源还需登录后实测。
+platforms:
+  enabled: true
+  timeout: 90                 # 每个来源的 OpenCLI 执行超时（秒）。
+  sources:
+  # 公开来源，OpenCLI 通过公开 HTTP 接口或页面采集。
+  - id: github-trending
+    name: GitHub Trending
+    enabled: false
+    site: github-trending
+    command: repos
+    args: ['--since', daily]   # 例如 ['--since', weekly, '--language', python]
+    fields: {title: repo, source_excerpt: description, url: url, rank: rank}
+    max_limit: 25
+    limit: 20
+  - id: hackernews-top
+    name: Hacker News 热门帖子
+    enabled: false
+    site: hackernews
+    command: top
+    fields: {id: id, title: title, url: url, author: author, rank: rank}
+    url_template: 'https://news.ycombinator.com/item?id={id}'
+    limit: 20
+  # 浏览器来源，需要安装 OpenCLI 浏览器扩展，并准备网站登录会话。
+  # version_summary 保留这些来源原有的版本指纹。
+  - id: reddit-machinelearning
+    name: Reddit MachineLearning 最新帖子
+    enabled: false
+    site: reddit
+    command: subreddit
+    args: [MachineLearning, '--sort', new]
+    fields: &reddit_fields
+      {title: title, content: selftext, version_summary: selftext, url: url, author: author, published_at: created_utc}
+    limit: 25
+  - id: reddit-machinelearning-search
+    name: Reddit MachineLearning 关键词搜索
+    enabled: false
+    site: reddit
+    command: search
+    args: ['{query}', '--sort', new, '--subreddit', MachineLearning]  # 去掉 --subreddit 和社区名即可全站搜索。
+    # query: machine learning
+    fields: *reddit_fields
+    limit: 20
+  - id: x-ai
+    name: X 关键词搜索
+    enabled: false
+    site: twitter
+    command: search
+    args: ['{query}', '--product', live]
+    # query: machine learning
+    query_key: x               # 识别调用方的 x_query 覆盖参数。
+    fields: {title: text, content: text, version_summary: text, url: url, author: author, published_at: created_at}
+    title_limit: 240
+    limit: 20
+
+# RAJ 订阅来源：RSS（含 RDF）、Atom、JSON Feed。
+RAJ:
+  enabled: true
+  concurrency: null           # null 表示启用的订阅全部同时采集，也可填并发上限。
+  feeds:
+  - id: rss-huggingface
+    name: Hugging Face 博客
+    url: https://huggingface.co/blog/feed.xml
+    limit: 20
+    enabled: true
+  - id: rss-simon
+    name: Simon Willison（AI 工具与工程实践）
+    url: https://simonwillison.net/atom/everything/
+    limit: 20
+    enabled: true
+  - id: rss-openai
+    name: OpenAI 新闻
+    url: https://openai.com/news/rss.xml
+    limit: 20
+    enabled: true
+  - id: rss-deepmind
+    name: Google DeepMind 博客
+    url: https://deepmind.google/blog/rss.xml
+    limit: 20
+    enabled: true
+  - id: rss-google-research
+    name: Google Research 博客
+    url: https://research.google/blog/rss/
+    limit: 20
+    enabled: true
+  - id: rss-github-ai
+    name: GitHub Blog（AI 与机器学习）
+    url: https://github.blog/ai-and-ml/feed/
+    limit: 20
+    enabled: true
+  - id: rss-github-copilot
+    name: GitHub Copilot 更新日志
+    url: https://github.blog/changelog/label/copilot/feed/
+    limit: 20
+    enabled: true
+  - id: rss-lobsters
+    name: Lobsters 技术社区
+    url: https://lobste.rs/rss
+    limit: 20
+    enabled: true

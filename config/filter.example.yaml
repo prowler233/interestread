@@ -1,0 +1,45 @@
+# 复制为 filter.yaml 后按需调整；真实凭据填写在 .env 中。
+# 筛选模式
+# keyword 使用关键词规则；ai 使用兴趣描述。仅所选模式的配置生效。
+# 三类来源采集到的资讯统一使用此模式筛选，结果按类别归组。
+mode: keyword
+search_max_terms: 4           # 每个平台搜索任务最多包含的关键词数。
+search_max_chars: 200         # 单个查询字符串的长度上限，超限自动拆分。
+
+# 关键词模式，仅 mode: keyword 时生效。
+# 在标题和来源内容中匹配，不区分英文大小写；排除词优先。
+keyword:
+  # 每项格式为 "关键词1, 关键词2 -> 类别"，支持中英文逗号。
+  # 逗号表示或；& 表示且，例如 "机器学习&开源模型 -> ai" 要求两个词同时出现。
+  # 可混用，例如 "机器学习&开源模型, 大模型 -> ai"，先判断 & 组合，再判断逗号分支。
+  # 未写 -> 类别的关键词归入“未分类”；include: [] 表示不过滤包含词。
+  include:
+    - "机器学习, 开源模型 -> ai"
+    - "LOL，Dota -> 游戏"
+  exclude: []                 # 排除关键词，例如 [广告, 招聘]。
+  match: any                  # any 满足任一逗号分支；all 满足全部分支。每个 & 组合始终要求全部词命中。
+
+# AI 模式，仅 mode: ai 时生效。
+ai:
+  interests_file: ai_interests.txt  # 兴趣描述，相对 config 目录或填写绝对路径。
+  prompt_file: ai_processing_prompt.txt # 筛选、分类及结构化输出提示词，相对 config 目录或填写绝对路径。
+  provider: deepseek               # deepseek / zhipu / codex。
+  url: null                       # 在 .env 中设置 FILTER_AI__URL（完整请求地址）。
+  api_key: ""                     # 在 .env 中设置 FILTER_AI__API_KEY，不要在此填写真实密钥。
+  models: [deepseek-flash]         # 从前到后依次尝试，失败后切换到下一个。
+  batch_size: 12                   # 单次 AI 筛选的最大条数，长文本会拆成更小的批次。
+  timeout: 120                     # 每个模型调用的超时（秒）。
+  max_tokens: 4096                 # 单次模型输出 Token 上限。
+  format_retries: 1                # 每个模型输出格式错误后的修正次数，耗尽后尝试备用模型。
+
+# 自选平台的采集与筛选
+# Reddit subreddit 命令先获取指定社区帖子，再执行以上筛选。
+# Reddit 和 X 的 search 命令由组合入口自动生成查询串，crawl.yaml 无需填写 query。
+# keyword 模式使用 include 召回候选帖子，采集后执行 exclude 和 match。
+# 搜索来源启用时 include 需要至少一个关注词；空列表会使搜索来源失败，其他来源继续。
+# AI 模式在需要生成平台搜索词时先规划兴趣，采到的资讯按批筛选一次。
+# 搜索结果受平台搜索规则及采集条数限制。
+# 查询按关键词类别或 AI 主题拆分，各查询结果合并去重后仍受来源 limit 限制。
+# 筛选使用来源直接提供的标题、简介及正文。信息不足的结果保存在 insufficient 中。
+# 筛选失败的资讯保留在 failed 中，filter_error 记录错误，其他正常结果仍保存。
+# 同来源、同原文版本且筛选配置相同的已完成结果复用，采集次数和时间仍更新。
